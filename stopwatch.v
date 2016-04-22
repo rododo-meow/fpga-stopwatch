@@ -70,12 +70,13 @@ controller controller(
 	.startstop(!KEY[1]),
 	.pause(!KEY[2]),
 	.mark(!KEY[3]),
-	.running(running),
+	.led(running),
 	.mode(SW[0]),
 	.en(en),
 	.disp_sel(disp_sel),
 	.disp_update(disp_update),
-	.clk(CLOCK_10)
+	.clk(CLOCK_10),
+	.state(SW[2])
 );
 
 genvar i;
