@@ -13,11 +13,13 @@ initial CLOCK_50 = 0;
 always #10 CLOCK_50 = ~CLOCK_50;
 
 initial begin
-	KEY = 4'b0000;
-	#1000 KEY[0] = 4'b0001;
-	#1000000000 KEY[0] = 4'b0000;
-	#1000 KEY[0] = 4'b0001;
-	#2000000000 $stop();
+	KEY = 4'b1110;
+	#1000 KEY = 4'b1111;
+	#1000 KEY = 4'b1101;
+	#1000 KEY = 4'b1111;
+	#100000 KEY = 4'b0111;
+	#1000 KEY = 4'b1111;
+	#200000 $stop();
 end
 
 endmodule

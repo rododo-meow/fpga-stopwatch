@@ -34,11 +34,20 @@ module stopwatch(
 //=======================================================
 wire CLOCK_10;
 wire CLOCK_10MS;
-wire [63:0] cnt[9:0];
+wire CLOCK_1000MS;
+wire [63:0] cnt[10:0];
 reg [63:0] disp_cnt;
-wire [3:0] cs[1:0], s[1:0], m[1:0];
+wire [3:0] cs[1:0], s[1:0], m[1:0], h[1:0];
 wire ready;
-wire [6:0] hex[5:0];
+wire [6:0] seg[5:0];
+reg [3:0] disp_hex[5:0];
+wire disp_update;
+wire clk_disp_update;
+assign clk_disp_update = CLOCK_10MS & disp_update;
+wire [3:0] disp_sel;
+wire [19:0] running;
+wire [10:0] en;
+wire [9:0] led;
 
 //=======================================================
 //  Structural coding
@@ -50,21 +59,39 @@ pll pll(
 	.locked(ready)
 );
 
-clk_10_to_10ms clk_div(
+clk_10_to_ms #(.T(10)) clk_div(
 	.clk_10(CLOCK_10),
-	.clk_10ms(CLOCK_10MS),
-	.n_reset(KEY[0])
+	.clk_ms(CLOCK_10MS),
+	.n_reset(ready)
 );
 
-counter counter(
-	.en(1),
-	.n_reset(KEY[0] & ready),
-	.clk(CLOCK_10),
-	.cnt(cnt[0])
+controller controller(
+	.n_reset(KEY[0]),
+	.startstop(!KEY[1]),
+	.pause(!KEY[2]),
+	.mark(!KEY[3]),
+	.running(running),
+	.mode(SW[0]),
+	.en(en),
+	.disp_sel(disp_sel),
+	.disp_update(disp_update),
+	.clk(CLOCK_10)
 );
 
-always @(posedge CLOCK_10MS)
-	disp_cnt = cnt[0];
+genvar i;
+generate
+	for (i = 0; i < 11; i = i + 1) begin: counter
+		counter counter(
+			.en(en[i]),
+			.n_reset(KEY[0] & ready),
+			.clk(CLOCK_10),
+			.cnt(cnt[i])
+		);
+	end
+endgenerate
+
+always @(posedge clk_disp_update)
+	disp_cnt = cnt[disp_sel];
 
 timedecoder decoder(
 	.cnt(disp_cnt),
@@ -73,43 +100,63 @@ timedecoder decoder(
 	.s0(s[0]),
 	.s1(s[1]),
 	.m0(m[0]),
-	.m1(m[1])
+	.m1(m[1]),
+	.h0(h[0]),
+	.h1(h[1])
 );
 
-assign HEX0 = hex[0] | ~{7{ready}};
-assign HEX1 = hex[1] | ~{7{ready}};
-assign HEX2 = hex[2] | ~{7{ready}};
-assign HEX3 = hex[3] | ~{7{ready}};
-assign HEX4 = hex[4] | ~{7{ready}};
-assign HEX5 = hex[5] | ~{7{ready}};
-segdriver driver0(
-	.hex(cs[0]),
-	.seg(hex[0])
+clk_10_to_ms #(.T(1000)) clk_div2(
+	.clk_10(CLOCK_10),
+	.clk_ms(CLOCK_1000MS),
+	.n_reset(ready)
 );
 
-segdriver driver1(
-	.hex(cs[1]),
-	.seg(hex[1])
-);
+assign LEDR = led & {10{ready}};
+generate
+	for (i = 0; i < 10; i = i + 1) begin: led_driver
+		led_driver inst(
+			.mode(running[(i*2+1):(i*2)]),
+			.clk(CLOCK_1000MS),
+			.led(led[i]),
+			.n_reset(KEY[0])
+		);
+	end
+endgenerate
 
-segdriver driver2(
-	.hex(s[0]),
-	.seg(hex[2])
-);
+always @(disp_hex, SW[1]) begin
+	case (SW[1])
+	1'b0: begin
+		disp_hex[0] = cs[0];
+		disp_hex[1] = cs[1];
+		disp_hex[2] = s[0];
+		disp_hex[3] = s[1];
+		disp_hex[4] = m[0];
+		disp_hex[5] = m[1];
+	end
+	default: begin
+		disp_hex[0] = s[0];
+		disp_hex[1] = s[1];
+		disp_hex[2] = m[0];
+		disp_hex[3] = m[1];
+		disp_hex[4] = h[0];
+		disp_hex[5] = h[1];
+	end
+	endcase
+end
 
-segdriver driver3(
-	.hex(s[1]),
-	.seg(hex[3])
-);
-
-segdriver driver4(
-	.hex(m[0]),
-	.seg(hex[4])
-);
-
-segdriver driver5(
-	.hex(m[1]),
-	.seg(hex[5])
-);
+assign HEX0 = seg[0] | ~{7{ready}};
+assign HEX1 = seg[1] | ~{7{ready}};
+assign HEX2 = seg[2] | ~{7{ready}};
+assign HEX3 = seg[3] | ~{7{ready}};
+assign HEX4 = seg[4] | ~{7{ready}};
+assign HEX5 = seg[5] | ~{7{ready}};
+generate
+	for (i = 0; i < 6; i = i + 1) begin: seg_driver
+		seg_driver inst(
+			.hex(disp_hex[i]),
+			.seg(seg[i])
+		);
+	end
+endgenerate
 
 endmodule

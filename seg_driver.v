@@ -1,4 +1,4 @@
-module segdriver(hex, seg);
+module seg_driver(hex, seg);
 input [3:0] hex;
 output [6:0] seg;
 reg [6:0] seg;
