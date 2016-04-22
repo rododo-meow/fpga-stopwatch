@@ -1,0 +1,6 @@
+DATE = "02:01:05 April 22, 2016"
+QUARTUS_VERSION = "13.1"
+
+# Revisions
+
+PROJECT_REVISION = "stopwatch"
